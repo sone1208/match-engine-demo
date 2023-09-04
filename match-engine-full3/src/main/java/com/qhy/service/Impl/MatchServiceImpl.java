@@ -219,21 +219,21 @@ public class MatchServiceImpl implements MatchService {
             throw new RuntimeException(e);
         }
 
-        List<MatchRecord> matchRecords = redisChangeInfo.getMatchRecords(code);
-        List<TradingRecord> tradingRecords = redisChangeInfo.getTradingRecords(code);
-        List<Order> takerOrders = redisChangeInfo.getTakerOrders(code);
-
+        List<MatchRecord> matchRecords = redisChangeInfo.getAndDeleteMatchRecords(code);
         int len = matchRecords.size();
         if (len == 0)
             return ;
 
+        List<TradingRecord> tradingRecords = redisChangeInfo.getAndDeleteTradingRecords(code, 2*(long)len);
+        List<Order> takerOrders = redisChangeInfo.getAndDeleteTakerOrders(code, 2*(long)len);
+
         //首先进行批量插入和更新
         log.info("批量插入" + len + "条撮合记录");
-        matchRecordMapper.insertBatchSomeColumn(matchRecords.subList(0, len));
+        matchRecordMapper.insertBatchSomeColumn(matchRecords);
         log.info("批量插入" + 2 * len + "条成交记录");
-        tradingRecordMapper.insertBatchSomeColumn(tradingRecords.subList(0, 2 * len));
+        tradingRecordMapper.insertBatchSomeColumn(tradingRecords);
         log.info("批量更新" + 2 * len + "条订单信息记录");
-        orderMapper.updateBatch(takerOrders.subList(0, 2 * len));
+        orderMapper.updateBatch(takerOrders);
 
         // Todo 与单条信息一一发送相比是否更高效
 
@@ -274,11 +274,6 @@ public class MatchServiceImpl implements MatchService {
             throw new RuntimeException(e);
         }
         log.info("广播结束");
-
-        log.info("将处理过的临时记录删除");
-        redisChangeInfo.deleteHandledMatchRecords(code, len);
-        redisChangeInfo.deleteHandledTradingRecord(code, 2 * len);
-        redisChangeInfo.deleteHandledTakerOrders(code, 2 * len);
     }
 
 

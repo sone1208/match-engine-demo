@@ -8,9 +8,9 @@ public class Constant {
         private static final String STOCK_MARKET_PRICE_KEY = "STOCK_MARKET_PRICE_KEY";
         private static final String BUY_ORDER_LIST_KEY_PRE = "BUY_";
         private static final String SELL_ORDER_LIST_KEY_PRE = "SELL_";
-        private static final String TMP_MATCH_RECORDS_KEY = "TMP_MATCH_RECORDS";
-        private static final String TMP_TAKER_ORDERS_KEY = "TMP_TAKER_ORDERS";
-        private static final String TMP_TRADING_RECORDS_KEY = "TMP_TRADING_RECORDS";
+        private static final String TMP_MATCH_RECORDS_KEY = "TMP_MATCH_RECORDS_";
+        private static final String TMP_TAKER_ORDERS_KEY = "TMP_TAKER_ORDERS_";
+        private static final String TMP_TRADING_RECORDS_KEY = "TMP_TRADING_RECORDS_";
         private static final String TMP_NEW_TAKER_ORDERS_KEY = "TMP_NEW_TAKER_ORDERS";
         private static final String TMP_CANCEL_TAKER_ORDERS_KEY = "TMP_CANCEL_TAKER_ORDERS";
         private static final Long SHOWED_ORDER_NUMBER = 5L;

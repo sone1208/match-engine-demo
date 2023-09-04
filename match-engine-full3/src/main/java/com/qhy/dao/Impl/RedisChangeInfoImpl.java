@@ -23,103 +23,53 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
 
     @Override
     public void addMatchRecord(String code, MatchRecord matchRecord) {
-        List<MatchRecord> matchRecords = getMatchRecords(code);
-        matchRecords.add(matchRecord);
-        redisTemplate.opsForHash().put(Constant.Common.TMP_MATCH_RECORDS_KEY(), code, matchRecords);
+        redisTemplate.opsForList().rightPush(Constant.Common.TMP_MATCH_RECORDS_KEY()+code, matchRecord);
     }
 
     @Override
-    public List<MatchRecord> getMatchRecords(String code) {
-        List<MatchRecord> matchRecords;
-        Object tmp_object = redisTemplate.opsForHash().get(Constant.Common.TMP_MATCH_RECORDS_KEY(), code);
-        if (tmp_object == null) {
-            matchRecords = new ArrayList<>();
-        } else {
-            matchRecords = (List<MatchRecord>) tmp_object;
-        }
-        return matchRecords;
-    }
-
-    @Override
-    public void deleteHandledMatchRecords(String code, Integer len) {
-        if (len == 0)
-            return ;
-
-        List<MatchRecord> matchRecords = getMatchRecords(code);
-        if (len == matchRecords.size()) {
-            redisTemplate.opsForHash().put(Constant.Common.TMP_MATCH_RECORDS_KEY(), code,
-                    new ArrayList<MatchRecord>());
-        } else {
-            redisTemplate.opsForHash().put(Constant.Common.TMP_MATCH_RECORDS_KEY(), code,
-                    new ArrayList<>(matchRecords.subList(len, matchRecords.size())));
+    public List<MatchRecord> getAndDeleteMatchRecords(String code) {
+        Long len = redisTemplate.opsForList().size(Constant.Common.TMP_MATCH_RECORDS_KEY()+code);
+        if (len == null || len == 0)
+            return new ArrayList<>();
+        else {
+            List<MatchRecord> res = redisTemplate.opsForList().range(Constant.Common.TMP_MATCH_RECORDS_KEY()+code,
+                    0, len-1);
+            redisTemplate.opsForList().trim(Constant.Common.TMP_MATCH_RECORDS_KEY()+code, len, -1);
+            return res;
         }
     }
 
     @Override
     public void addTradingRecord(String code, TradingRecord tradingRecord) {
-        List<TradingRecord> tradingRecords = getTradingRecords(code);
-        tradingRecords.add(tradingRecord);
-        redisTemplate.opsForHash().put(Constant.Common.TMP_TRADING_RECORDS_KEY(), code, tradingRecords);
+        redisTemplate.opsForList().rightPush(Constant.Common.TMP_TRADING_RECORDS_KEY()+code, tradingRecord);
     }
 
     @Override
-    public List<TradingRecord> getTradingRecords(String code) {
-        List<TradingRecord> tradingRecords;
-        Object tmp_object = redisTemplate.opsForHash().get(Constant.Common.TMP_TRADING_RECORDS_KEY(), code);
-        if (tmp_object == null) {
-            tradingRecords = new ArrayList<>();
-        } else {
-            tradingRecords = (List<TradingRecord>) tmp_object;
-        }
-        return tradingRecords;
-    }
-
-    @Override
-    public void deleteHandledTradingRecord(String code, Integer len) {
-        if (len == 0)
-            return ;
-
-        List<TradingRecord> tradingRecords = getTradingRecords(code);
-        if (len == tradingRecords.size()) {
-            redisTemplate.opsForHash().put(Constant.Common.TMP_TRADING_RECORDS_KEY(), code,
-                    new ArrayList<TradingRecord>());
-        } else {
-            redisTemplate.opsForHash().put(Constant.Common.TMP_TRADING_RECORDS_KEY(), code,
-                    new ArrayList<>(tradingRecords.subList(len, tradingRecords.size())));
+    public List<TradingRecord> getAndDeleteTradingRecords(String code, Long len) {
+        if (len == null || len == 0)
+            return new ArrayList<>();
+        else {
+            List<TradingRecord> res = redisTemplate.opsForList().range(Constant.Common.TMP_TRADING_RECORDS_KEY()+code,
+                    0, len-1);
+            redisTemplate.opsForList().trim(Constant.Common.TMP_TRADING_RECORDS_KEY()+code, len, -1);
+            return res;
         }
     }
 
     @Override
     public void addTakerOrder(String code, Order order) {
-        List<Order> takerOrders = getTakerOrders(code);
-        takerOrders.add(order);
-        redisTemplate.opsForHash().put(Constant.Common.TMP_TAKER_ORDERS_KEY(), code, takerOrders);
+        redisTemplate.opsForList().rightPush(Constant.Common.TMP_TAKER_ORDERS_KEY()+code, order);
     }
 
     @Override
-    public List<Order> getTakerOrders(String code) {
-        List<Order> takerOrders;
-        Object tmp_object = redisTemplate.opsForHash().get(Constant.Common.TMP_TAKER_ORDERS_KEY(), code);
-        if (tmp_object == null) {
-            takerOrders = new ArrayList<>();
-        } else {
-            takerOrders = (List<Order>) tmp_object;
-        }
-        return takerOrders;
-    }
-
-    @Override
-    public void deleteHandledTakerOrders(String code, Integer len) {
-        if (len == 0)
-            return ;
-
-        List<Order> takerOrders = getTakerOrders(code);
-        if (len == takerOrders.size()) {
-            redisTemplate.opsForHash().put(Constant.Common.TMP_TAKER_ORDERS_KEY(), code,
-                    new ArrayList<Order>());
-        } else {
-            redisTemplate.opsForHash().put(Constant.Common.TMP_TAKER_ORDERS_KEY(), code,
-                    new ArrayList<>(takerOrders.subList(len, takerOrders.size())));
+    public List<Order> getAndDeleteTakerOrders(String code, Long len) {
+        if (len == null || len == 0)
+            return new ArrayList<>();
+        else {
+            List<Order> res = redisTemplate.opsForList().range(Constant.Common.TMP_TAKER_ORDERS_KEY()+code,
+                    0, len-1);
+            redisTemplate.opsForList().trim(Constant.Common.TMP_TAKER_ORDERS_KEY()+code, len, -1);
+            return res;
         }
     }
 
@@ -136,9 +86,7 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
          else {
             List<Order> res = redisTemplate.opsForList().range(Constant.Common.TMP_NEW_TAKER_ORDERS_KEY(),
                     0, len-1);
-            for (int i = 0; i < len; i++) {
-                redisTemplate.opsForList().leftPop(Constant.Common.TMP_NEW_TAKER_ORDERS_KEY());
-            }
+            redisTemplate.opsForList().trim(Constant.Common.TMP_NEW_TAKER_ORDERS_KEY(), len, -1);
             return res;
         }
     }
@@ -156,9 +104,7 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
         else {
             List<Order> res = redisTemplate.opsForList().range(Constant.Common.TMP_CANCEL_TAKER_ORDERS_KEY(),
                     0, len-1);
-            for (int i = 0; i < len; i++) {
-                redisTemplate.opsForList().leftPop(Constant.Common.TMP_CANCEL_TAKER_ORDERS_KEY());
-            }
+            redisTemplate.opsForList().trim(Constant.Common.TMP_CANCEL_TAKER_ORDERS_KEY(), len, -1);
             return res;
         }
     }
