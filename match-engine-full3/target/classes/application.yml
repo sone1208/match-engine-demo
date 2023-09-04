@@ -25,9 +25,9 @@ mybatis-plus:
 
 logging:
   level:
-    org.springframework: info
-#  file:
-#    name: matchEngineLog.log
+    root: warn
+  file:
+    name: matchEngineLog.log
 
 
 

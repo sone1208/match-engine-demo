@@ -51,7 +51,7 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
                     new ArrayList<MatchRecord>());
         } else {
             redisTemplate.opsForHash().put(Constant.Common.TMP_MATCH_RECORDS_KEY(), code,
-                    matchRecords.subList(len, matchRecords.size()));
+                    new ArrayList<>(matchRecords.subList(len, matchRecords.size())));
         }
     }
 
@@ -85,7 +85,7 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
                     new ArrayList<TradingRecord>());
         } else {
             redisTemplate.opsForHash().put(Constant.Common.TMP_TRADING_RECORDS_KEY(), code,
-                    tradingRecords.subList(len, tradingRecords.size()));
+                    new ArrayList<>(tradingRecords.subList(len, tradingRecords.size())));
         }
     }
 
@@ -119,7 +119,7 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
                     new ArrayList<Order>());
         } else {
             redisTemplate.opsForHash().put(Constant.Common.TMP_TAKER_ORDERS_KEY(), code,
-                    takerOrders.subList(len, takerOrders.size()));
+                    new ArrayList<>(takerOrders.subList(len, takerOrders.size())));
         }
     }
 
