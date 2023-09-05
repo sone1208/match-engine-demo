@@ -278,6 +278,7 @@ public class MatchServiceImpl implements MatchService {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+            log.info("股票" + code + "广播完成");
         }
     }
 
