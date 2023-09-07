@@ -69,13 +69,16 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public Order addOrder(Order order) {
+        long stime = System.nanoTime();
         log.info("添加order订单前配置order信息");
         order.setQty(order.getOriginqty());
         order.setStatus(1);
 
         //将order信息首先插入到数据库，同时可生成id信息
+        long stime1 = System.nanoTime();
         log.info("维护order的数据库表，orderid为" + order.getOrderid());
         orderMapper.insert(order);
+        long etime1 = System.nanoTime();
 
         //维护redis的缓存信息
         //维护order缓存表
@@ -95,6 +98,9 @@ public class OrderServiceImpl implements OrderService {
         redisChangeInfo.addNewTakerOrder(order);
 
         log.info("添加order订单" + order.getOrderid() + "执行结束，返回新新生成的订单");
+        long etime = System.nanoTime();
+        log.warn("本轮订单添加执行时长：" + ((etime - stime) / 1000000.0) + " 毫秒. ");
+//        log.warn("本轮mysql落库时间比例：" + (((double)(etime1 - stime1)) / (etime - stime)));
         return order;
     }
 
@@ -106,7 +112,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("对订单" + orderid + "redis中的状态进行更新");
         // 对订单在redis中的状态进行更新，lua保证原子操作
         log.info("执行lua脚本将订单状态改为3：正在撤单");
-        if (!redisOrderDao.changeOneOrderStatusByLua(order)) {
+        if (!redisOrderDao.changeOneOrderStatusByLua(order, 3)) {
             log.info("订单状态修改失败，直接退出");
             return false;
         }

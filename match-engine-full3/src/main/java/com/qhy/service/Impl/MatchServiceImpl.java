@@ -78,15 +78,16 @@ public class MatchServiceImpl implements MatchService {
     public void matchExecutor(String code) {
         log.info("对股票" + code + "开始撮合");
 
-        // Todo 是否应该测试好撮合能力以后，再确定每3s中最多撮合的次数
-
         while(true) {
+            long stime = System.nanoTime();
             log.info("开始校验股票"+code);
             /**
              * 取两个book的top订单
              */
+            long stime1 = System.nanoTime();
             Integer topSellOrderId = redisOrderSellBookDao.getTopOneOrder(code);
             Integer topBuyOrderId = redisOrderBuyBookDao.getTopOneOrder(code);
+            long etime1 = System.nanoTime();
 
             /**
              * 两个校验决定是否退出循环：1.买盘或卖盘为空；2.价格原因无法再撮合
@@ -94,18 +95,21 @@ public class MatchServiceImpl implements MatchService {
             log.info("对股票" + code + "买卖盘是否为空进行校验");
             if (topSellOrderId == null || topBuyOrderId == null) {
                 log.info("对股票" + code + "买卖盘是否为空校验后发现出现了空盘，准备退出");
-                return;
+                break;
             }
 
+            long stime2 = System.nanoTime();
             Order topSellOrder = redisOrderDao.getOrder(topSellOrderId);
             Order topBuyOrder = redisOrderDao.getOrder(topBuyOrderId);
+            long etime2 = System.nanoTime();
 
             log.info("对股票" + code + "买卖盘价格是否可以撮合进行校验");
             if (topSellOrder.getPrice().compareTo(topBuyOrder.getPrice()) > 0) {
                 log.info("对股票" + code + "买卖盘价格是否可以撮合校验后，发现此时价格已不能再撮合，准备退出");
-                return;
+                break;
             }
 
+            long stime3 = System.nanoTime();
             log.info("执行lua脚本将订单状态改为2：正在交易");
             if (!redisOrderDao.changeTwoOrderStatusByLua(topSellOrder, topBuyOrder)) {
                 log.info("订单状态修改失败，sleep 0.1s 再继续撮合");
@@ -116,6 +120,7 @@ public class MatchServiceImpl implements MatchService {
                 }
                 continue;
             }
+            long etime3 = System.nanoTime();
 
             log.info("所有校验通过，开始对股票" + code +
                     "盘中id" + topSellOrderId + "和id" + topBuyOrderId + "开始撮合");
@@ -155,6 +160,7 @@ public class MatchServiceImpl implements MatchService {
             log.info("股票" + code +
                     "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前更新行情表记录");
             //将两个top中完全成交的从orderBook删除，并更新订单状态
+            long stime4 = System.nanoTime();
             if (topSellOrder.getQty().signum() == 0) {
                 redisOrderSellBookDao.deleteOrder(code, topSellOrder);
                 topSellOrder.setStatus(5);
@@ -167,12 +173,15 @@ public class MatchServiceImpl implements MatchService {
             } else {
                 topBuyOrder.setStatus(4);
             }
+            long etime4 = System.nanoTime();
 
             log.info("股票" + code +
                     "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前向redis存储order信息");
             //更新发生成交的订单到redis中
+            long stime5 = System.currentTimeMillis();
             redisOrderDao.putOrder(topBuyOrderId, topBuyOrder);
             redisOrderDao.putOrder(topSellOrderId, topSellOrder);
+            long etime5 = System.currentTimeMillis();
 
             /**
              * 除去新的买卖盘和redis中的order信息需要更新外，其余部分采用批量更新的方式
@@ -181,8 +190,10 @@ public class MatchServiceImpl implements MatchService {
             log.info("股票" + code +
                     "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前记录在mysql存储的order");
             //预存储发生成交的订单
+            long stime6 = System.nanoTime();
             redisChangeInfo.addTakerOrder(code, topBuyOrder);
             redisChangeInfo.addTakerOrder(code, topSellOrder);
+            long etime6 = System.nanoTime();
 
             log.info("股票" + code +
                     "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前记录成交记录");
@@ -206,16 +217,223 @@ public class MatchServiceImpl implements MatchService {
 
             log.info("股票" + code +
                     "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：本轮全部完成");
+
+            long etime = System.nanoTime();
+//            log.warn("本轮撮合执行时长：" + ((etime - stime) / 1000000.0) + " 毫秒. ");
+//            log.warn("本轮撮合取首订单时间比例：" + (((double)(etime1 - stime1)) / (etime - stime)));
+//            log.warn("本轮撮合根据id获取订单信息时间比例：" + (((double)(etime2 - stime2)) / (etime - stime)));
+//            log.warn("本轮撮合执行lua脚本时间比例：" + (((double)(etime3 - stime3)) / (etime - stime)));
+//            log.warn("本轮撮合从跳表删记录时间比例：" + (((double)(etime4 - stime4)) / (etime - stime)));
+//            log.warn("本轮撮合更新订单信息时间比例：" + (((double)(etime5 - stime5)) / (etime - stime)));
+//            log.warn("本轮撮合订单变化临时信息存储时间比例：" + (((double)(etime6 - stime6)) / (etime - stime)));
+        }
+    }
+
+    @Override
+    public void matchExecutorMuti(String code) {
+        log.info("对股票" + code + "开始批量撮合");
+
+        while(true) {
+            long stime = System.nanoTime();
+            log.info("开始校验股票"+code);
+            /**
+             * 取两个book的top订单
+             */
+            long stime1 = System.nanoTime();
+            Integer topSellOrderId = redisOrderSellBookDao.getTopOneOrder(code);
+            Integer topBuyOrderId = redisOrderBuyBookDao.getTopOneOrder(code);
+            long etime1 = System.nanoTime();
+
+            /**
+             * 两个校验决定是否退出循环：1.买盘或卖盘为空；2.价格原因无法再撮合
+             */
+            log.info("对股票" + code + "买卖盘是否为空进行校验");
+            if (topSellOrderId == null || topBuyOrderId == null) {
+                log.info("对股票" + code + "买卖盘是否为空校验后发现出现了空盘，准备退出");
+                break;
+            }
+
+            long stime2 = System.nanoTime();
+            Order topSellOrder = redisOrderDao.getOrder(topSellOrderId);
+            Order topBuyOrder = redisOrderDao.getOrder(topBuyOrderId);
+            long etime2 = System.nanoTime();
+
+            log.info("对股票" + code + "买卖盘价格是否可以撮合进行校验");
+            if (topSellOrder.getPrice().compareTo(topBuyOrder.getPrice()) > 0) {
+                log.info("对股票" + code + "买卖盘价格是否可以撮合校验后，发现此时价格已不能再撮合，准备退出");
+                break;
+            }
+
+            /**
+             * 获取价格优于当前取到订单价格的所有订单
+             */
+            log.info("对股票" + code + "获得当前取到的最优订单价格的所有订单");
+            List<Integer> topSellOrderIds = redisOrderSellBookDao.getTopOrdersByScore(code, topSellOrder);
+            List<Integer> topBuyOrderIds = redisOrderBuyBookDao.getTopOrdersByScore(code, topBuyOrder);
+
+            //需要额外校验一次，防止买卖盘变化了，出现空结果
+            if (topBuyOrderIds == null || topSellOrderIds == null) {
+                log.info("对股票" + code + "获得当前取到的最优订单价格的所有订单失败，订单可能已撤单");
+                break;
+            }
+
+            long stime3 = System.nanoTime();
+            log.info("根据orderId的列表批量获取order");
+            List<Order> topSellOrders = redisOrderDao.getOrders(topSellOrderIds);
+            List<Order> topBuyOrders = redisOrderDao.getOrders(topBuyOrderIds);
+
+            log.info("循环列表执行lua脚本将订单状态改为2：正在交易，将状态修改失败的（正常情况是删除了）去掉，同时记录总数量");
+            BigDecimal totalSellQTY = new BigDecimal(0);
+            BigDecimal totalBuyQTY = new BigDecimal(0);
+
+            Iterator<Order> iterator = topSellOrders.listIterator();
+            while(iterator.hasNext()) {
+                Order handlingOrder = iterator.next();
+                if (!redisOrderDao.changeOneOrderStatusByLua(handlingOrder, 2)) {
+                    iterator.remove();
+                } else {
+                    totalSellQTY.add(handlingOrder.getQty());
+                }
+            }
+
+            iterator = topBuyOrders.listIterator();
+            while(iterator.hasNext()) {
+                Order handlingOrder = iterator.next();
+                if (!redisOrderDao.changeOneOrderStatusByLua(handlingOrder, 2)) {
+                    iterator.remove();
+                } else {
+                    totalBuyQTY.add(handlingOrder.getQty());
+                }
+            }
+            long etime3 = System.nanoTime();
+
+
+
+
+
+            log.info("所有校验通过，开始对股票" + code +
+                    "盘中id" + topSellOrderId + "和id" + topBuyOrderId + "及其价格相同的买卖单开始撮合");
+            /**
+             * 校验通过开始撮合
+             */
+            log.info("股票" + code + "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：确定成交价");
+            //成交价格根据市场价、买入价、卖出价决定，并更新市场价
+            BigDecimal marketPrice = redisStockMarketPriceDao.getMarketPrice(code);
+            //简化方法，将较早订单的价格作为市场价，实际情况需要竞价
+            if (marketPrice.equals(new BigDecimal(-1))) {
+                if (topSellOrderId < topBuyOrderId) {
+                    marketPrice = topSellOrder.getPrice();
+                } else {
+                    marketPrice = topBuyOrder.getPrice();
+                }
+            }
+            BigDecimal matchedPrice = getMatchPrice(marketPrice, topBuyOrder.getPrice(), topSellOrder.getPrice());
+
+            log.info("股票" + code + "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：确定成交价后更新市场价");
+            //更新市场价
+            redisStockMarketPriceDao.setNewMarketPrice(code, matchedPrice);
+
+
+
+
+            log.info("股票" + code + "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "及其价格相同的买卖单：确定成交量");
+            BigDecimal matchedVol = topSellOrder.getQty().min(topBuyOrder.getQty());
+
+            //双指针遍历，确定成交量的同时存储记录
+            log.info("股票" + code + "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录");
+            /**
+             * 撮合完成，存储记录：包括redis更新，mysql持久化
+             * 涉及表：撮合记录MatchRecord，成交记录TradingRecord，订单信息order表，redis中的买卖盘
+             */
+
+            //更新order的剩余数量
+            topSellOrder.setQty(topSellOrder.getQty().subtract(matchedVol));
+            topBuyOrder.setQty(topBuyOrder.getQty().subtract(matchedVol));
+
+            log.info("股票" + code +
+                    "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前更新行情表记录");
+            //将两个top中完全成交的从orderBook删除，并更新订单状态
+            long stime4 = System.nanoTime();
+            if (topSellOrder.getQty().signum() == 0) {
+                redisOrderSellBookDao.deleteOrder(code, topSellOrder);
+                topSellOrder.setStatus(5);
+            } else {
+                topSellOrder.setStatus(4);
+            }
+            if (topBuyOrder.getQty().signum() == 0) {
+                redisOrderBuyBookDao.deleteOrder(code, topBuyOrder);
+                topBuyOrder.setStatus(5);
+            } else {
+                topBuyOrder.setStatus(4);
+            }
+            long etime4 = System.nanoTime();
+
+            log.info("股票" + code +
+                    "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前向redis存储order信息");
+            //更新发生成交的订单到redis中
+            long stime5 = System.currentTimeMillis();
+            redisOrderDao.putOrder(topBuyOrderId, topBuyOrder);
+            redisOrderDao.putOrder(topSellOrderId, topSellOrder);
+            long etime5 = System.currentTimeMillis();
+
+            /**
+             * 除去新的买卖盘和redis中的order信息需要更新外，其余部分采用批量更新的方式
+             * 行情表是较独立模块，可单独更新
+             */
+            log.info("股票" + code +
+                    "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前记录在mysql存储的order");
+            //预存储发生成交的订单
+            long stime6 = System.nanoTime();
+            redisChangeInfo.addTakerOrder(code, topBuyOrder);
+            redisChangeInfo.addTakerOrder(code, topSellOrder);
+            long etime6 = System.nanoTime();
+
+            log.info("股票" + code +
+                    "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前记录成交记录");
+            //预存储成交记录（面向用户）
+            TradingRecord buyerTradingRecord = new TradingRecord(topBuyOrder.getUserid(), code,
+                    matchedPrice, matchedVol,
+                    true, topSellOrder.getUserid());
+            TradingRecord sellerTradingRecord = new TradingRecord(topSellOrder.getUserid(), code,
+                    matchedPrice, matchedVol,
+                    false, topBuyOrder.getUserid());
+            redisChangeInfo.addTradingRecord(code, buyerTradingRecord);
+            redisChangeInfo.addTradingRecord(code, sellerTradingRecord);
+
+            log.info("股票" + code +
+                    "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前记录撮合记录");
+            //预存储撮合记录（面向交易所）
+            //撮合记录最后记录，在持久化时，只需要看撮合记录的数量，就能决定前两个数据的数量了
+            MatchRecord newMatchRecord = new MatchRecord(code, matchedPrice, matchedVol,
+                    topBuyOrder.getUserid(), topSellOrder.getUserid());
+            redisChangeInfo.addMatchRecord(code, newMatchRecord);
+
+            log.info("股票" + code +
+                    "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：本轮全部完成");
+
+            long etime = System.nanoTime();
+//            log.warn("本轮撮合执行时长：" + ((etime - stime) / 1000000.0) + " 毫秒. ");
+//            log.warn("本轮撮合取首订单时间比例：" + (((double)(etime1 - stime1)) / (etime - stime)));
+//            log.warn("本轮撮合根据id获取订单信息时间比例：" + (((double)(etime2 - stime2)) / (etime - stime)));
+//            log.warn("本轮撮合执行lua脚本时间比例：" + (((double)(etime3 - stime3)) / (etime - stime)));
+//            log.warn("本轮撮合从跳表删记录时间比例：" + (((double)(etime4 - stime4)) / (etime - stime)));
+//            log.warn("本轮撮合更新订单信息时间比例：" + (((double)(etime5 - stime5)) / (etime - stime)));
+//            log.warn("本轮撮合订单变化临时信息存储时间比例：" + (((double)(etime6 - stime6)) / (etime - stime)));
         }
     }
 
     @Override
     public void sendChangeOrders(String code) {
 
+        long stime = System.currentTimeMillis();
+
         log.info("广播股票" + code + "的新行情快照");
         try {
             webSocket.sendNewSubscribedOrders(getSubscribedOrders(code), code);
         } catch (IOException e) {
+
+            // Todo 具体处理
+
             throw new RuntimeException(e);
         }
 
@@ -274,6 +492,11 @@ public class MatchServiceImpl implements MatchService {
             throw new RuntimeException(e);
         }
         log.info("广播结束");
+
+        long etime = System.currentTimeMillis();
+        if (len > 0) {
+//            log.warn("本轮落库和广播执行时长：" + (etime - stime) + " 毫秒，涉及成交订单" + len + "条");
+        }
     }
 
 

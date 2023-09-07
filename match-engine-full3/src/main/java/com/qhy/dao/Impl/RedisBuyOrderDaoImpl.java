@@ -8,7 +8,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Repository("RedisOrderBuyBookDao")
@@ -50,13 +52,49 @@ public class RedisBuyOrderDaoImpl implements RedisBSOrderDao {
 
     @Override
     public Integer getTopOneOrder(String code) {
-        if (redisTemplate.opsForZSet().size(getFullKey(code)) > 0) {
-            Set<String> codes = redisTemplate.opsForZSet().range(getFullKey(code), 0, 0);
-            for (String topCode : codes) {
-                return Integer.parseInt(topCode);
-            }
+        Set<String> orderIds = redisTemplate.opsForZSet().range(getFullKey(code), 0, 0);
+        if (orderIds.isEmpty())
+            return null;
+        for (String topOrderId : orderIds) {
+            return Integer.parseInt(topOrderId);
         }
         return null;
+    }
+
+    @Override
+    public List<Integer> getTopOrdersByScore(String code, Order order) {
+        Set<String> orderIds = redisTemplate.opsForZSet().rangeByScore(getFullKey(code),
+                Double.NEGATIVE_INFINITY, getScore(order));
+        if (orderIds.isEmpty())
+            return null;
+
+        List<Integer> res = new ArrayList<>();
+        Integer invalidIdLow = Integer.MAX_VALUE;
+        boolean hasScanTopId = false;
+
+        for (String topOrderId : orderIds) {
+            Integer orderId = Integer.parseInt(topOrderId);
+            // 排序在order以前的一定是价格更优的，此时直接忽略，并记录忽略的order里面id最小的记为invalidIdLow
+            if (!hasScanTopId) {
+                if (orderId > order.getOrderid()) {
+                    invalidIdLow = Integer.min(invalidIdLow, orderId);
+                } else if (orderId.equals(order.getOrderid())) {
+                    hasScanTopId = true;
+                    res.add(orderId);
+                }
+            } else {
+                //已经扫描过了最开始提取的orderId，后面的order如果有超过invalidIdLow的也忽略掉，因为逻辑上比更优的晚，不能处理
+                if (orderId > invalidIdLow) {
+                    break;
+                } else {
+                    res.add(orderId);
+                }
+            }
+        }
+        if (res.isEmpty())
+            return null;
+
+        return res;
     }
 
     @Override

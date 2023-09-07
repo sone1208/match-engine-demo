@@ -33,7 +33,12 @@ public class RedisOrderDaoImpl implements RedisOrderDao {
     }
 
     @Override
-    public boolean changeOneOrderStatusByLua(Order order) {
+    public List<Order> getOrders(List<Integer> orderIds) {
+        return redisTemplate.opsForHash().multiGet(Constant.Common.ORDER_LIST_KEY(), orderIds);
+    }
+
+    @Override
+    public boolean changeOneOrderStatusByLua(Order order, Integer status) {
         DefaultRedisScript<Boolean> redisScript = new DefaultRedisScript<>();
         // 指定 lua 脚本
         redisScript.setScriptSource(new ResourceScriptSource(
@@ -41,7 +46,7 @@ public class RedisOrderDaoImpl implements RedisOrderDao {
         // 指定返回类型
         redisScript.setResultType(Boolean.class);
         // 参数一：redisScript，参数二：key列表，参数三：arg（可多个）
-        return (Boolean) redisTemplate.execute(redisScript, Collections.singletonList(order.getOrderid()));
+        return (Boolean) redisTemplate.execute(redisScript, Collections.singletonList(order.getOrderid()), status);
     }
 
     @Override
@@ -57,8 +62,6 @@ public class RedisOrderDaoImpl implements RedisOrderDao {
         // 指定返回类型
         redisScript.setResultType(Boolean.class);
         // 参数一：redisScript，参数二：key列表，参数三：arg（可多个）
-
-//        return false;
         return (Boolean) redisTemplate.execute(redisScript, orderIds);
     }
 

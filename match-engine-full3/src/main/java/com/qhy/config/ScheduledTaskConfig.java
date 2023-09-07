@@ -44,8 +44,8 @@ public class ScheduledTaskConfig implements SchedulingConfigurer {
                     stkCode);
 
             log.info("添加了股票代码为" + stkCode + "的撮合定时任务和广播后台数据变化的定时任务");
-            taskRegistrar.addFixedDelayTask(matchTask, 3000);
-            taskRegistrar.addFixedRateTask(matchBroadcastTask, 3000);
+            taskRegistrar.addFixedDelayTask(matchTask, 100);
+            taskRegistrar.addFixedDelayTask(matchBroadcastTask, 100);
             log.info("添加股票代码为" + stkCode + "的定时任务成功");
         }
 

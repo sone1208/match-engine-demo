@@ -60,7 +60,7 @@ public class ServiceController {
         order.setUserid(id);
         Order newOrder = orderService.addOrder(order);
 
-        // Todo 可能？是否需要立即刷新行情表
+        // Todo 演示过程需要立即刷新行情表
 
         log.info("id为" + id + "的用户请求添加新订单成功，订单id为"
                 + newOrder.getOrderid() + "向前端返回新添加的订单信息");
@@ -76,7 +76,7 @@ public class ServiceController {
             log.error("id为" + id + "的用户请求删除订单" + orderId + "失败，返回空结果");
             return new Results(false);
         } else {
-            // Todo 可能？是否需要立即刷新行情表
+            // Todo 演示过程需要立即刷新行情表
             log.info("id为" + id + "的用户请求删除订单" + orderId + "操作成功返回新的订单委托表");
             return new Results(true);
         }
