@@ -25,7 +25,7 @@ mybatis-plus:
 
 logging:
   level:
-    root: info
+    root: warn
   file:
     name: matchEngineLog.log
 

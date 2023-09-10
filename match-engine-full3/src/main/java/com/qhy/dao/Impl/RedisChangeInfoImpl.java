@@ -27,6 +27,12 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
     }
 
     @Override
+    public void addMatchRecords(String code, List<MatchRecord> matchRecords) {
+        redisTemplate.opsForList().rightPushAll(Constant.Common.TMP_MATCH_RECORDS_KEY()+code,
+                matchRecords.toArray());
+    }
+
+    @Override
     public List<MatchRecord> getAndDeleteMatchRecords(String code) {
         Long len = redisTemplate.opsForList().size(Constant.Common.TMP_MATCH_RECORDS_KEY()+code);
         if (len == null || len == 0)
@@ -45,6 +51,12 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
     }
 
     @Override
+    public void addTradingRecords(String code, List<TradingRecord> tradingRecords) {
+        redisTemplate.opsForList().rightPushAll(Constant.Common.TMP_TRADING_RECORDS_KEY()+code,
+                tradingRecords.toArray());
+    }
+
+    @Override
     public List<TradingRecord> getAndDeleteTradingRecords(String code, Long len) {
         if (len == null || len == 0)
             return new ArrayList<>();
@@ -59,6 +71,12 @@ public class RedisChangeInfoImpl implements RedisChangeInfo {
     @Override
     public void addTakerOrder(String code, Order order) {
         redisTemplate.opsForList().rightPush(Constant.Common.TMP_TAKER_ORDERS_KEY()+code, order);
+    }
+
+    @Override
+    public void addTakerOrders(String code, List<Order> orders) {
+        redisTemplate.opsForList().rightPushAll(Constant.Common.TMP_TAKER_ORDERS_KEY()+code,
+                orders.toArray());
     }
 
     @Override

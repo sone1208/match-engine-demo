@@ -63,6 +63,7 @@ public class RedisBuyOrderDaoImpl implements RedisBSOrderDao {
 
     @Override
     public List<Integer> getTopOrdersByScore(String code, Order order) {
+        //取出来的订单一定要么跟order的分数相同，要么更优
         Set<String> orderIds = redisTemplate.opsForZSet().rangeByScore(getFullKey(code),
                 Double.NEGATIVE_INFINITY, getScore(order));
         if (orderIds.isEmpty())
@@ -100,6 +101,11 @@ public class RedisBuyOrderDaoImpl implements RedisBSOrderDao {
     @Override
     public void deleteOrder(String code, Order order) {
         redisTemplate.opsForZSet().remove(getFullKey(code), String.format("%012d", order.getOrderid()));
+    }
+
+    @Override
+    public void deleteOrders(String code, List<String> orderIds) {
+        redisTemplate.opsForZSet().remove(getFullKey(code), orderIds.toArray());
     }
 
     /**

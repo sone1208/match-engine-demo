@@ -12,6 +12,7 @@ public interface RedisBSOrderDao {
     public Integer getTopOneOrder(String code);
     public List<Integer> getTopOrdersByScore(String code, Order order);
     public void deleteOrder(String code, Order order);
+    public void deleteOrders(String code, List<String> orderIds);
     public double getScore(Order order);
     public String getFullKey(String code);
 }

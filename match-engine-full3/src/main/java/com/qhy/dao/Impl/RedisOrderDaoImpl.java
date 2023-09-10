@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Repository("RedisOrderDao")
 public class RedisOrderDaoImpl implements RedisOrderDao {
@@ -25,6 +26,11 @@ public class RedisOrderDaoImpl implements RedisOrderDao {
     @Override
     public void putOrder(Integer orderId, Order order) {
         redisTemplate.opsForHash().put(Constant.Common.ORDER_LIST_KEY(), orderId, order);
+    }
+
+    @Override
+    public void putOrders(Map<Integer, Order> orders) {
+        redisTemplate.opsForHash().putAll(Constant.Common.ORDER_LIST_KEY(), orders);
     }
 
     @Override

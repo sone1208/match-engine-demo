@@ -8,7 +8,7 @@ local order = redisOrder[2]
 
 if order.status == 1 or order.status == 4
 then
-    order.status = 3
+    order.status = ARGV[1]
     redisOrder[2] = order
 
     local json_order = cjson.encode(redisOrder)
