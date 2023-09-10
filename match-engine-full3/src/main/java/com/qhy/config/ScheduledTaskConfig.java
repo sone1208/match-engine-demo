@@ -36,7 +36,7 @@ public class ScheduledTaskConfig implements SchedulingConfigurer {
 
             MyRunnable matchTask = new MyRunnable(
                     "MatchService",
-                    "matchExecutor",
+                    "matchExecutorMuti",
                     stkCode);
             MyRunnable matchBroadcastTask = new MyRunnable(
                     "MatchService",

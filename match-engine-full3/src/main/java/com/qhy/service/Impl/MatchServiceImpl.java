@@ -344,11 +344,15 @@ public class MatchServiceImpl implements MatchService {
                         !redisOrderDao.changeOneOrderStatusByLua(sellOrder, 2)) {
                     topSellOrders.remove(sellIndex);
                     continue;
+                } else {
+                    sellOrder.setStatus(2);
                 }
                 if (buyOrder.getStatus() != 2 &&
                         !redisOrderDao.changeOneOrderStatusByLua(buyOrder, 2)) {
                     topBuyOrders.remove(buyIndex);
                     continue;
+                } else {
+                    buyOrder.setStatus(2);
                 }
                 long etime3 = System.nanoTime();
 
@@ -363,13 +367,13 @@ public class MatchServiceImpl implements MatchService {
                 //对剩余数量为0的进行修改状态并临时记录行情变化和orderMap，最后自增index
                 if (sellOrder.getQty().signum() == 0) {
                     sellOrder.setStatus(5);
-                    sellOrderBook.add(String.format("%012d",sellOrder.getOrderid()));
+                    sellOrderBook.add(String.format("%012d", sellOrder.getOrderid()));
                     orderMap.put(sellOrder.getOrderid(), sellOrder);
                     sellIndex++;
                 }
                 if (buyOrder.getQty().signum() == 0) {
                     buyOrder.setStatus(5);
-                    buyOrderBook.add(String.format("%012d",buyOrder.getOrderid()));
+                    buyOrderBook.add(String.format("%012d", buyOrder.getOrderid()));
                     orderMap.put(buyOrder.getOrderid(), buyOrder);
                     buyIndex++;
                 }
@@ -378,7 +382,7 @@ public class MatchServiceImpl implements MatchService {
                 //由于是异步更新落库，所以成交时间需要手动生成而不是落库的时候生成
                 Date nowDate = new Date();
                 MatchRecord matchRecord = new MatchRecord(code, matchedPrice, matchedVol,
-                        buyOrder.getOrderid(), sellOrder.getOrderid(), nowDate, nowDate);
+                        buyOrder.getUserid(), sellOrder.getUserid(), nowDate, nowDate);
                 TradingRecord tradingRecord1 = new TradingRecord(buyOrder.getUserid(), code,
                         matchedPrice, matchedVol, true, sellOrder.getUserid(),
                         nowDate, nowDate);
@@ -421,8 +425,12 @@ public class MatchServiceImpl implements MatchService {
             log.info("股票" + code + "撮合完成，开始存储记录，当前更新行情表记录");
             //将两个top中完全成交的从orderBook删除，并更新订单状态
             long stime4 = System.nanoTime();
-            redisOrderSellBookDao.deleteOrders(code, sellOrderBook);
-            redisOrderBuyBookDao.deleteOrders(code, buyOrderBook);
+            if (sellOrderBook.size() > 0) {
+                redisOrderSellBookDao.deleteOrders(code, sellOrderBook);
+            }
+            if (buyOrderBook.size() > 0) {
+                redisOrderBuyBookDao.deleteOrders(code, buyOrderBook);
+            }
             long etime4 = System.nanoTime();
 
             log.info("股票" + code + "撮合完成，开始存储记录，当前向redis存储order信息");
@@ -453,7 +461,7 @@ public class MatchServiceImpl implements MatchService {
             log.info("股票" + code + "撮合：本轮全部完成");
 
             long etime = System.nanoTime();
-//            log.warn("本轮撮合执行时长：" + ((etime - stime) / 1000000.0) + " 毫秒. ");
+            log.warn("本轮撮合执行时长：" + ((etime - stime) / 1000000.0) + " 毫秒. ");
 //            log.warn("本轮撮合取首订单时间比例：" + (((double)(etime1 - stime1)) / (etime - stime)));
 //            log.warn("本轮撮合根据id获取订单信息时间比例：" + (((double)(etime2 - stime2)) / (etime - stime)));
 //            log.warn("本轮撮合执行lua脚本时间比例：" + (((double)(etime3 - stime3)) / (etime - stime)));
