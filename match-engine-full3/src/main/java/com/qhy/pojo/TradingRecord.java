@@ -36,22 +36,25 @@ public class TradingRecord {
     private Integer makerid;
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     @JsonFormat(pattern = "yyyy-MM-dd", timezone="GMT+8")
-    @TableField(value = "tradingdate", fill = FieldFill.INSERT)
+    @TableField(value = "tradingdate")
     private Date tradingdate;
     @DateTimeFormat(pattern = "HH:mm:ss")
     @JsonFormat(pattern = "HH:mm:ss", timezone="GMT+8")
-    @TableField(value = "tradingtime", fill = FieldFill.INSERT)
+    @TableField(value = "tradingtime")
     private Date tradingtime;
 
 
     public TradingRecord(Integer userid, String stkcode,
                          BigDecimal price, BigDecimal qty,
-                         Boolean bsflag, Integer makerid) {
+                         Boolean bsflag, Integer makerid,
+                         Date tradingdate, Date tradingtime) {
         this.userid = userid;
         this.stkcode = stkcode;
         this.price = price;
         this.qty = qty;
         this.bsflag = bsflag;
         this.makerid = makerid;
+        this.tradingdate = tradingdate;
+        this.tradingtime = tradingtime;
     }
 }

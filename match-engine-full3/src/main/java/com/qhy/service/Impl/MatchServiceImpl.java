@@ -198,12 +198,13 @@ public class MatchServiceImpl implements MatchService {
             log.info("股票" + code +
                     "撮合id" + topSellOrderId + "和id" + topBuyOrderId + "：完成，开始存储记录，当前记录成交记录");
             //预存储成交记录（面向用户）
+            Date nowDate = new Date();
             TradingRecord buyerTradingRecord = new TradingRecord(topBuyOrder.getUserid(), code,
-                    matchedPrice, matchedVol,
-                    true, topSellOrder.getUserid());
+                    matchedPrice, matchedVol, true, topSellOrder.getUserid(),
+                    nowDate, nowDate);
             TradingRecord sellerTradingRecord = new TradingRecord(topSellOrder.getUserid(), code,
-                    matchedPrice, matchedVol,
-                    false, topBuyOrder.getUserid());
+                    matchedPrice, matchedVol, false, topBuyOrder.getUserid(),
+                    nowDate, nowDate);
             redisChangeInfo.addTradingRecord(code, buyerTradingRecord);
             redisChangeInfo.addTradingRecord(code, sellerTradingRecord);
 
@@ -212,7 +213,8 @@ public class MatchServiceImpl implements MatchService {
             //预存储撮合记录（面向交易所）
             //撮合记录最后记录，在持久化时，只需要看撮合记录的数量，就能决定前两个数据的数量了
             MatchRecord newMatchRecord = new MatchRecord(code, matchedPrice, matchedVol,
-                    topBuyOrder.getUserid(), topSellOrder.getUserid());
+                    topBuyOrder.getUserid(), topSellOrder.getUserid(),
+                    nowDate, nowDate);
             redisChangeInfo.addMatchRecord(code, newMatchRecord);
 
             log.info("股票" + code +
@@ -373,14 +375,16 @@ public class MatchServiceImpl implements MatchService {
                 }
 
                 //临时记录生成
+                //由于是异步更新落库，所以成交时间需要手动生成而不是落库的时候生成
+                Date nowDate = new Date();
                 MatchRecord matchRecord = new MatchRecord(code, matchedPrice, matchedVol,
-                        buyOrder.getOrderid(), sellOrder.getOrderid());
+                        buyOrder.getOrderid(), sellOrder.getOrderid(), nowDate, nowDate);
                 TradingRecord tradingRecord1 = new TradingRecord(buyOrder.getUserid(), code,
-                        matchedPrice, matchedVol,
-                        true, sellOrder.getUserid());
+                        matchedPrice, matchedVol, true, sellOrder.getUserid(),
+                        nowDate, nowDate);
                 TradingRecord tradingRecord2 = new TradingRecord(sellOrder.getUserid(), code,
-                        matchedPrice, matchedVol,
-                        true, buyOrder.getUserid());
+                        matchedPrice, matchedVol, false, buyOrder.getUserid(),
+                        nowDate, nowDate);
 
                 //临时记录add进数组
                 matchRecords.add(matchRecord);
@@ -489,11 +493,6 @@ public class MatchServiceImpl implements MatchService {
         tradingRecordMapper.insertBatchSomeColumn(tradingRecords);
         log.info("批量更新" + 2 * len + "条订单信息记录");
         orderMapper.updateBatch(takerOrders);
-
-        for (MatchRecord matchRecord : matchRecords) {
-            log.warn(matchRecord.getMatchdate().toString());
-            log.warn(matchRecord.getMatchtime().toString());
-        }
 
         // Todo 与单条信息一一发送相比是否更高效
 

@@ -34,19 +34,22 @@ public class MatchRecord {
     private Integer sellerid;
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     @JsonFormat(pattern = "yyyy-MM-dd", timezone="GMT+8")
-    @TableField(value = "matchdate", fill = FieldFill.INSERT)
+    @TableField(value = "matchdate")
     private Date matchdate;
     @DateTimeFormat(pattern = "HH:mm:ss")
     @JsonFormat(pattern = "HH:mm:ss", timezone="GMT+8")
-    @TableField(value = "matchtime", fill = FieldFill.INSERT)
+    @TableField(value = "matchtime")
     private Date matchtime;
 
 
-    public MatchRecord(String stkcode, BigDecimal price, BigDecimal qty, Integer buyerid, Integer sellerid) {
+    public MatchRecord(String stkcode, BigDecimal price, BigDecimal qty,
+                       Integer buyerid, Integer sellerid, Date matchdate, Date matchtime) {
         this.stkcode = stkcode;
         this.price = price;
         this.qty = qty;
         this.buyerid = buyerid;
         this.sellerid = sellerid;
+        this.matchdate = matchdate;
+        this.matchtime = matchtime;
     }
 }
