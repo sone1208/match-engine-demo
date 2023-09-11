@@ -99,7 +99,7 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("添加order订单" + order.getOrderid() + "执行结束，返回新新生成的订单");
         long etime = System.nanoTime();
-//        log.warn("本轮订单添加执行时长：" + ((etime - stime) / 1000000.0) + " 毫秒. ");
+        log.warn("本轮订单添加执行时长：" + ((etime - stime) / 1000000.0) + " 毫秒. ");
 //        log.warn("本轮mysql落库时间比例：" + (((double)(etime1 - stime1)) / (etime - stime)));
         return order;
     }

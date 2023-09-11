@@ -238,10 +238,11 @@ public class MatchServiceImpl implements MatchService {
          * 批量获取与最优订单的价格相同的所有订单id（但会涉及到将额外的订单id获取出来然后再排除掉的开销）
          * 通过订单id的list批量获取订单信息
          * 买盘和卖盘对应的redis跳表批量删除记录
+         * 批量更新redis中orderid和order的hash映射表
          * 将买卖的变化订单批量存入临时redis
          * 将成交记录批量存入临时redis
          * 将撮合记录批量存入临时redis
-         * 上述四个redis批量的逻辑修改，是期望减少和redis的通信次数达到减小撮合总时间的效果
+         * 上述五个redis批量的逻辑修改，是期望减少和redis的通信次数达到减小撮合总时间的效果
          */
 
         log.info("对股票" + code + "开始批量撮合");
@@ -327,10 +328,12 @@ public class MatchServiceImpl implements MatchService {
             log.info("股票" + code + "开始双指针遍历买卖盘：确定成交价后更新市场价");
             List<MatchRecord> matchRecords = new ArrayList<>();
             List<TradingRecord> tradingRecords = new ArrayList<>();
+            List<Order> takerOrders = new ArrayList<>();
             List<String> sellOrderBook = new ArrayList<>();
             List<String> buyOrderBook = new ArrayList<>();
             Map<Integer, Order> orderMap = new HashMap<>();
 
+            long stime3 = System.nanoTime();
             //双指针遍历，确定成交量的记录产生的撮合和成交订单
             Integer sellIndex = 0, buyIndex = 0;
 
@@ -339,7 +342,6 @@ public class MatchServiceImpl implements MatchService {
                 Order buyOrder = topBuyOrders.get(buyIndex);
 
                 //将lua脚本控制状态修改放在撮合循环中，防止将不需要的订单状态也进行了无用的修改
-                long stime3 = System.nanoTime();
                 if (sellOrder.getStatus() != 2 &&
                         !redisOrderDao.changeOneOrderStatusByLua(sellOrder, 2)) {
                     topSellOrders.remove(sellIndex);
@@ -354,7 +356,6 @@ public class MatchServiceImpl implements MatchService {
                 } else {
                     buyOrder.setStatus(2);
                 }
-                long etime3 = System.nanoTime();
 
                 log.info("股票" + code + "撮合id" + sellOrder.getOrderid() + "和id" + buyOrder.getOrderid() +
                         "及其价格相同的买卖单：确定成交量");
@@ -394,24 +395,26 @@ public class MatchServiceImpl implements MatchService {
                 matchRecords.add(matchRecord);
                 tradingRecords.add(tradingRecord1);
                 tradingRecords.add(tradingRecord2);
+                takerOrders.add(sellOrder);
+                takerOrders.add(buyOrder);
             }
 
             //遍历结束，删除多余元素
-            log.info("双指针遍历结束，将余下一个部分交易的order存入临时map，将orderList多余的删除股票为" + code);
+            log.info("双指针遍历结束，将余下一个部分交易的order存入临时map，股票为" + code);
             if (sellIndex < topSellOrders.size()) {
                 if (topSellOrders.get(sellIndex).getStatus() == 2) {
                     topSellOrders.get(sellIndex).setStatus(4);
                     orderMap.put(topSellOrders.get(sellIndex).getOrderid(), topSellOrders.get(sellIndex));
                 }
-                topSellOrders = topSellOrders.subList(0, sellIndex + 1);
             }
             if (buyIndex < topBuyOrders.size()) {
                 if (topBuyOrders.get(buyIndex).getStatus() == 2) {
                     topBuyOrders.get(buyIndex).setStatus(4);
                     orderMap.put(topBuyOrders.get(buyIndex).getOrderid(), topBuyOrders.get(buyIndex));
                 }
-                topBuyOrders = topBuyOrders.subList(0, buyIndex + 1);
             }
+
+            long etime3 = System.nanoTime();
 
 
 
@@ -446,8 +449,7 @@ public class MatchServiceImpl implements MatchService {
             log.info("股票" + code + "撮合完成，开始存储记录，当前记录在mysql存储的order");
             //预存储发生成交的订单
             long stime6 = System.nanoTime();
-            topSellOrders.addAll(topBuyOrders);
-            redisChangeInfo.addTakerOrders(code, topSellOrders);
+            redisChangeInfo.addTakerOrders(code, takerOrders);
             long etime6 = System.nanoTime();
 
             log.info("股票" + code + "撮合完成，开始存储记录，当前记录成交记录");
@@ -462,12 +464,12 @@ public class MatchServiceImpl implements MatchService {
 
             long etime = System.nanoTime();
             log.warn("本轮撮合执行时长：" + ((etime - stime) / 1000000.0) + " 毫秒. ");
-//            log.warn("本轮撮合取首订单时间比例：" + (((double)(etime1 - stime1)) / (etime - stime)));
-//            log.warn("本轮撮合根据id获取订单信息时间比例：" + (((double)(etime2 - stime2)) / (etime - stime)));
-//            log.warn("本轮撮合执行lua脚本时间比例：" + (((double)(etime3 - stime3)) / (etime - stime)));
-//            log.warn("本轮撮合从跳表删记录时间比例：" + (((double)(etime4 - stime4)) / (etime - stime)));
-//            log.warn("本轮撮合更新订单信息时间比例：" + (((double)(etime5 - stime5)) / (etime - stime)));
-//            log.warn("本轮撮合订单变化临时信息存储时间比例：" + (((double)(etime6 - stime6)) / (etime - stime)));
+            log.warn("本轮撮合取首订单时间比例：" + (((double)(etime1 - stime1)) / (etime - stime)));
+            log.warn("本轮撮合根据id获取订单信息时间比例：" + (((double)(etime2 - stime2)) / (etime - stime)));
+            log.warn("本轮撮合循环确定成交量并执行lua的时间比例：" + (((double)(etime3 - stime3)) / (etime - stime)));
+            log.warn("本轮撮合从跳表删记录时间比例：" + (((double)(etime4 - stime4)) / (etime - stime)));
+            log.warn("本轮撮合更新订单信息时间比例：" + (((double)(etime5 - stime5)) / (etime - stime)));
+            log.warn("本轮撮合订单变化临时信息存储时间比例：" + (((double)(etime6 - stime6)) / (etime - stime)));
         }
     }
 
