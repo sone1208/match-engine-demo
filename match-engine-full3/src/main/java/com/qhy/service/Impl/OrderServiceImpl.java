@@ -69,6 +69,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public Order addOrder(Order order) {
+
+        // Todo 添加订单的执行时间太长，待优化
+
         long stime = System.nanoTime();
         log.info("添加order订单前配置order信息");
         order.setQty(order.getOriginqty());
@@ -149,7 +152,7 @@ public class OrderServiceImpl implements OrderService {
         List<Order> newTakerOrders = redisChangeInfo.getAndDeleteNewTakerOrders();
         List<Order> cancelTakerOrders = redisChangeInfo.getAndDeleteCancelTakerOrders();
 
-        // Todo 与单条信息一一发送相比是否更高效
+        // Todo 通过userId组织起来统一发送 与 单条信息一一发送相比是否更高效
 
         log.info("处理新增订单");
         HashMap<Integer, List<Order>> newTakerOrdersMap = new HashMap<>();

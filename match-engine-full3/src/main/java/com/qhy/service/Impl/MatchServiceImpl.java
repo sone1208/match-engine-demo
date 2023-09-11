@@ -391,6 +391,8 @@ public class MatchServiceImpl implements MatchService {
                         matchedPrice, matchedVol, false, buyOrder.getUserid(),
                         nowDate, nowDate);
 
+                // Todo 订单信息的改变应该可以优化为只看最后一次的结果，而不是为了数量比例和撮合记录匹配，重复记录很多次订单
+
                 //临时记录add进数组
                 matchRecords.add(matchRecord);
                 tradingRecords.add(tradingRecord1);
@@ -483,7 +485,7 @@ public class MatchServiceImpl implements MatchService {
             webSocket.sendNewSubscribedOrders(getSubscribedOrders(code), code);
         } catch (IOException e) {
 
-            // Todo 具体处理
+            // Todo 对于异常具体该怎么处理
 
             throw new RuntimeException(e);
         }
@@ -504,7 +506,7 @@ public class MatchServiceImpl implements MatchService {
         log.info("批量更新" + 2 * len + "条订单信息记录");
         orderMapper.updateBatch(takerOrders);
 
-        // Todo 与单条信息一一发送相比是否更高效
+        // Todo 通过userId组织起来统一发送 与 单条信息一一发送相比是否更高效
 
         HashMap<Integer, List<Order>> takerOrdersForUser = new HashMap<>();
         HashMap<Integer, List<TradingRecord>> tradingRecordsForUser = new HashMap<>();
@@ -519,8 +521,6 @@ public class MatchServiceImpl implements MatchService {
             if (newTradingRecords == null) {
                 newTradingRecords = new ArrayList<>();
             }
-
-            // Todo 订单信息的改变是否可以优化为只看最后一次的结果
 
             newTakerOrders.add(takerOrders.get(i));
             takerOrdersForUser.put(takerOrders.get(i).getUserid(), newTakerOrders);

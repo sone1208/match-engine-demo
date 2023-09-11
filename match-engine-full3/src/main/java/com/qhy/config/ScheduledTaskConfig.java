@@ -54,7 +54,7 @@ public class ScheduledTaskConfig implements SchedulingConfigurer {
                 "sendChangeOrders");
 
         log.info("添加订单信息变化广播的定时任务");
-        taskRegistrar.addFixedRateTask(orderBroadcastTask, 3000);
+        taskRegistrar.addFixedRateTask(orderBroadcastTask, 100);
         log.info("添加订单信息变化广播的定时任务成功");
     }
 
