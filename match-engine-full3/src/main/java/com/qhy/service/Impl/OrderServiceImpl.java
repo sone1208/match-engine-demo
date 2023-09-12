@@ -77,6 +77,8 @@ public class OrderServiceImpl implements OrderService {
         order.setQty(order.getOriginqty());
         order.setStatus(1);
 
+        // Todo 可以试试将插入后的MySQL落库设置为定时任务，执行批量插入然后再广播消息，但注意保证任务时间间隔，保证响应速度
+
         //将order信息首先插入到数据库，同时可生成id信息
         long stime1 = System.nanoTime();
         log.info("维护order的数据库表，orderid为" + order.getOrderid());
